@@ -1,9 +1,10 @@
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-
-
-import os
-from dotenv import load_dotenv
 
 # Lê o arquivo .env e injeta as variáveis no ambiente do sistema
 load_dotenv()
@@ -13,37 +14,30 @@ client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 redirect_uri = os.getenv("REDIRECT_URI")
 
-# Teste rápido para validar (apague o print depois)
-print("ID carregado com sucesso:", client_id is not None)
+output_dir = Path("data/raw")
 
-# Define as permissões para ler artistas principais, faixas e histórico
-SCOPE = 'user-top-read user-read-recently-played'
+def extract_recent_tracks(limit: int = 50) -> str:
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=redirect_uri,
+        scope="user-read-recently-played",
+        cache_path='.spotify_cache'
+    ))
 
-# Inicia a autenticação
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id=client_id,
-    client_secret=client_secret,
-    redirect_uri=redirect_uri,
-    scope=SCOPE,
-    cache_path='.spotify_cache'
-))
+    # 1. Busca o payload bruto completo na API
+    recent_tracks = sp.current_user_recently_played(limit=limit)
 
-'''# Extrai os 10 artistas mais ouvidos (médio prazo - últimos 6 meses)
-print("--- Seus Top 10 Artistas ---")
-top_artists = sp.current_user_top_artists(limit=10, time_range='medium_term')
-for i, artist in enumerate(top_artists['items']):
-    print(f"{i + 1}. {artist['name']}")
+    # 2. Gera um nome único com timestamp (ex: recent_tracks_20261117_215300.json)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = output_dir / f"recent_tracks_{timestamp}.json"
 
-# Extrai as 10 faixas mais ouvidas (médio prazo - últimos 6 meses)
-print("\n--- Suas Top 10 Faixas ---")
-top_tracks = sp.current_user_top_tracks(limit=10, time_range='medium_term')
-for i, track in enumerate(top_tracks['items']):
-    print(f"{i + 1}. {track['name']} - {track['artists'][0]['name']}")'''
+    # 3. Salva o JSON bruto preservando acentos (ensure_ascii=False)
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(recent_tracks, f, ensure_ascii=False, indent=4)
 
-# Extrai as últimas 5 músicas reproduzidas
-print("\n--- Tocadas Recentemente ---")
-recent = sp.current_user_recently_played(limit=10)
+    print(f"Extração concluída: {file_path}")
+    return str(file_path)
 
-for i, item in enumerate(recent['items']):
-    track = item['track']
-    print(f"{i + 1}. {track['name']} - {track['artists'][0]['name']}")
+if __name__ == "__main__":
+    extract_recent_tracks()
