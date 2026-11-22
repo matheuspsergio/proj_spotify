@@ -28,11 +28,15 @@ def extract_recent_tracks(limit: int = 50) -> str:
     # 1. Busca o payload bruto completo na API
     recent_tracks = sp.current_user_recently_played(limit=limit)
 
-    # 2. Gera um nome único com timestamp (ex: recent_tracks_20261117_215300.json)
+    # 2. Garante que a pasta data/raw exista
+    output_dir = Path("data/raw")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3. Gera um nome único com timestamp (ex: recent_tracks_20261117_215300.json)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_path = output_dir / f"recent_tracks_{timestamp}.json"
 
-    # 3. Salva o JSON bruto preservando acentos (ensure_ascii=False)
+    # 4. Salva o JSON bruto preservando acentos (ensure_ascii=False)
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(recent_tracks, f, ensure_ascii=False, indent=4)
 
